@@ -1,154 +1,75 @@
 #include <windows.h>
-#pragma option push -a1
-#pragma comment (lib, "Setupapi.lib")
 #include <setupapi.h>
-#pragma option pop
+#include <hidsdi.h>
 #include <iostream>
-#include <assert.h>
-#include <cstring>
-
 using namespace std;
+
+#pragma comment(lib, "setupapi.lib")
+#pragma comment(lib, "hid.lib")
 
 GUID classGuid;
 HMODULE hHidLib;
-DWORD memberIndex = 0;
-DWORD deviceInterfaceDetailDataSize;
-DWORD requiredSize;
-    
-HDEVINFO deviceInfoSet;
-SP_DEVICE_INTERFACE_DATA deviceInterfaceData;
-PSP_DEVICE_INTERFACE_DETAIL_DATA deviceInterfaceDetailData = NULL;
-SP_DEVINFO_DATA deviceInfoData;
-
-
-
-void displayError(const char *msg)
-{
-    cout << msg << "\n";
-    system("PAUSE");
-    exit(0);
-}
-
-template <class T>
-inline void releaseMemory(T &x)
-{
-    assert(x != NULL);
-    delete [] x;
-    x = NULL;
-}
-
-void showHIDS()
-{
+// Funkcja do iteracji przez listę HID urządzeń
+void EnumerateHIDDevices() {
     hHidLib = LoadLibrary("C:\\Windows\\System32\\hid.dll");
-    if (!hHidLib)
-    {
-        displayError("Blad wczytania hid.dll");
-    }
+
     void (__stdcall *HidD_GetHidGuid)(OUT LPGUID HidGuid);
     (FARPROC&) HidD_GetHidGuid = GetProcAddress(hHidLib,"HidD_GetHidGuid");
 
     if (!HidD_GetHidGuid)
     {
         FreeLibrary(hHidLib);
-        displayError("Nie znaleziono identyfikatora GUID");
+   
     }
 
     HidD_GetHidGuid(&classGuid);
-    deviceInfoSet = SetupDiGetClassDevs(&classGuid, NULL, NULL, DIGCF_PRESENT | DIGCF_INTERFACEDEVICE);
-    if (deviceInfoSet == INVALID_HANDLE_VALUE)
-        displayError("Nie zidentyfikowano podłączonych urządzeń.\n");
 
-    deviceInterfaceData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
-    while(SetupDiEnumDeviceInterfaces(deviceInfoSet, NULL, &classGuid, memberIndex, &deviceInterfaceData))
-    {
-        memberIndex++; //inkrementacja numeru interfejsu
-        SetupDiGetDeviceInterfaceDetail(deviceInfoSet, &deviceInterfaceData, NULL, 0, &deviceInterfaceDetailDataSize, NULL);
-        deviceInterfaceDetailData = (PSP_DEVICE_INTERFACE_DETAIL_DATA) new DWORD[deviceInterfaceDetailDataSize];
-        deviceInterfaceDetailData->cbSize=sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
+    HDEVINFO hDevInfo = SetupDiGetClassDevs(&classGuid, NULL, NULL, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+    if (hDevInfo == INVALID_HANDLE_VALUE) {
+        std::cerr << "SetupDiGetClassDevs failed" << std::endl;
+        return;
+    }
 
-        if (!SetupDiGetDeviceInterfaceDetail(deviceInfoSet, &deviceInterfaceData, deviceInterfaceDetailData, deviceInterfaceDetailDataSize, &requiredSize, NULL))
-        {
-            releaseMemory(deviceInterfaceDetailData);
-            SetupDiDestroyDeviceInfoList(deviceInfoSet);
-            displayError("Nie można pobrać informacji o interfejsie.\n");
+    SP_DEVINFO_DATA devInfoData;
+    devInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
+
+    // Iteruj przez urządzenia
+    for (DWORD i = 0; SetupDiEnumDeviceInfo(hDevInfo, i, &devInfoData); ++i) {
+        // Pobierz interfejs urządzenia
+        SP_DEVICE_INTERFACE_DATA devInterfaceData;
+        devInterfaceData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
+
+        if (SetupDiEnumDeviceInterfaces(hDevInfo, &devInfoData, &classGuid, 0, &devInterfaceData)) {
+            // Pobierz wymagany rozmiar bufora
+            DWORD requiredSize;
+            SetupDiGetDeviceInterfaceDetail(hDevInfo, &devInterfaceData, NULL, 0, &requiredSize, NULL);
+
+            SP_DEVICE_INTERFACE_DETAIL_DATA* devInterfaceDetailData =
+                (SP_DEVICE_INTERFACE_DETAIL_DATA*)malloc(requiredSize);
+            devInterfaceDetailData->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
+
+            if (SetupDiGetDeviceInterfaceDetail(hDevInfo, &devInterfaceData, devInterfaceDetailData,
+                                                requiredSize, NULL, NULL)) {
+                cout << devInterfaceDetailData->DevicePath;
+                HANDLE hHIDDevice = CreateFile(devInterfaceDetailData->DevicePath, GENERIC_READ | GENERIC_WRITE,
+                                               FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+
+                if (hHIDDevice != INVALID_HANDLE_VALUE) {
             
+                    CloseHandle(hHIDDevice);
+                }
+            }
+
+            free(devInterfaceDetailData);
         }
-        cout << deviceInterfaceDetailData->DevicePath << endl;
-        releaseMemory(deviceInterfaceDetailData);
-    }
-    SetupDiDestroyDeviceInfoList(deviceInfoSet);
-    FreeLibrary(hHidLib);
-}
-string getRegistryPropertyString(HDEVINFO deviceInfoSet,PSP_DEVINFO_DATA deviceInfoData, DWORD property)
-{
-    DWORD propertyBufferSize = 0;
-    char *propertyBuffer = NULL;
-    SetupDiGetDeviceRegistryProperty(deviceInfoSet, deviceInfoData, property, NULL, NULL, 0, &propertyBufferSize);
-
-    propertyBuffer = new char[(propertyBufferSize * sizeof(TCHAR))];
-    bool result=SetupDiGetDeviceRegistryProperty(deviceInfoSet, deviceInfoData, property, NULL, PBYTE(propertyBuffer), propertyBufferSize, NULL);
-
-    if(!result)
-        releaseMemory(propertyBuffer);
-    return propertyBuffer;
-}
-void showProperties()
-{
-    hHidLib = LoadLibrary("C:\\Windows\\System32\\hid.dll");
-    if (!hHidLib)
-    {
-        displayError("Blad wczytania hid.dll");
-    }
-    void (__stdcall *HidD_GetHidGuid)(OUT LPGUID HidGuid);
-    (FARPROC&) HidD_GetHidGuid = GetProcAddress(hHidLib,"HidD_GetHidGuid");
-
-    if (!HidD_GetHidGuid)
-    {
-        FreeLibrary(hHidLib);
-        displayError("Nie znaleziono identyfikatora GUID");
     }
 
-    HidD_GetHidGuid(&classGuid);
-    deviceInfoSet = SetupDiGetClassDevs(&classGuid, NULL, NULL, DIGCF_PRESENT | DIGCF_INTERFACEDEVICE);
-    if (deviceInfoSet == INVALID_HANDLE_VALUE)
-        displayError("Nie zidentyfikowano podłączonych urządzeń.\n");
-
-    deviceInterfaceData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
-    while(SetupDiEnumDeviceInterfaces(deviceInfoSet, NULL, &classGuid,memberIndex, &deviceInterfaceData))
-    {
-        memberIndex++;
-        SetupDiGetDeviceInterfaceDetail(deviceInfoSet, &deviceInterfaceData, NULL, 0, &deviceInterfaceDetailDataSize, NULL);
-        deviceInterfaceDetailData = (PSP_DEVICE_INTERFACE_DETAIL_DATA) new DWORD[deviceInterfaceDetailDataSize];
-        deviceInterfaceDetailData->cbSize=sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
-        deviceInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
-
-        if (!SetupDiGetDeviceInterfaceDetail(deviceInfoSet, &deviceInterfaceData, deviceInterfaceDetailData, deviceInterfaceDetailDataSize, &requiredSize, &deviceInfoData))
-        {
-            releaseMemory(deviceInterfaceDetailData);
-            SetupDiDestroyDeviceInfoList(deviceInfoSet);
-            displayError ("Nie można pobrać informacji o interfejsie.\n");
-        }
-
-        cout << "\nClassDescr: "<<getRegistryPropertyString(deviceInfoSet,&deviceInfoData, SPDRP_CLASS);
-        cout << "\nClassGUID: "<<getRegistryPropertyString(deviceInfoSet,&deviceInfoData, SPDRP_CLASSGUID);
-        cout << "\nCompatibileIDs: "<<getRegistryPropertyString(deviceInfoSet, &deviceInfoData, SPDRP_COMPATIBLEIDS);
-        cout << "\nConfigFlags: "<<getRegistryPropertyString(deviceInfoSet,&deviceInfoData, SPDRP_CONFIGFLAGS);
-        cout << "\nDeviceDescr: "<<getRegistryPropertyString(deviceInfoSet, &deviceInfoData, SPDRP_DEVICEDESC);
-        cout << "\nDriver: "<<getRegistryPropertyString(deviceInfoSet, &deviceInfoData, SPDRP_DRIVER);
-        cout << "\nHardwareID: "<<getRegistryPropertyString(deviceInfoSet,&deviceInfoData, SPDRP_HARDWAREID);
-        cout << "\nMfg: "<<getRegistryPropertyString(deviceInfoSet, &deviceInfoData, SPDRP_MFG);
-        cout << "\nEnumeratorName: "<<getRegistryPropertyString(deviceInfoSet, &deviceInfoData, SPDRP_ENUMERATOR_NAME);
-        cout << "\nPhysDevObjName: "<<getRegistryPropertyString(deviceInfoSet, &deviceInfoData, SPDRP_PHYSICAL_DEVICE_OBJECT_NAME);
-        cout << endl;
-        releaseMemory(deviceInterfaceDetailData);
-    }
-
-    SetupDiDestroyDeviceInfoList(deviceInfoSet);
-    FreeLibrary(hHidLib);
+    // Zwolnij uchwyt do interfejsu setupapi
+    SetupDiDestroyDeviceInfoList(hDevInfo);
 }
 
-int main()
-{
-    //showHIDS();
-    showProperties();
+int main() {
+    EnumerateHIDDevices();
+
+    return 0;
 }
