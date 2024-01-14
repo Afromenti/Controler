@@ -2,6 +2,7 @@
 #include <setupapi.h>
 #include <hidsdi.h>
 #include <iostream>
+#include <regex>
 using namespace std;
 
 #pragma comment(lib, "setupapi.lib")
@@ -70,14 +71,21 @@ void EnumerateHIDDevices() {
 
             if (SetupDiGetDeviceInterfaceDetail(hDevInfo, &devInterfaceData, devInterfaceDetailData, deviceInterfaceDetailDataSize, &requiredSize, &deviceInfoData)) 
             {
-                cout << "\nClassDescr: "<<getRegistryPropertyString(hDevInfo,&deviceInfoData, SPDRP_CLASS);
-                HANDLE hHIDDevice = CreateFile(devInterfaceDetailData->DevicePath, GENERIC_READ | GENERIC_WRITE,
-                                               FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
-
-                if (hHIDDevice != INVALID_HANDLE_VALUE) {
+            std::string s = getRegistryPropertyString(hDevInfo,&deviceInfoData, SPDRP_HARDWAREID);
             
+            if (s.find("VID_045E") != std::string::npos) 
+            {
+                cout << devInterfaceDetailData->DevicePath;
+
+                HANDLE hHIDDevice = CreateFile(devInterfaceDetailData->DevicePath, GENERIC_READ | GENERIC_WRITE,FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
+
+                if (hHIDDevice != INVALID_HANDLE_VALUE) 
+                {
+                    cout << "\n" << "Polaczono z kontrolerem";
                     CloseHandle(hHIDDevice);
                 }
+            }
+
             }
 
             free(devInterfaceDetailData);
