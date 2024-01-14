@@ -82,6 +82,26 @@ void EnumerateHIDDevices() {
                 if (hHIDDevice != INVALID_HANDLE_VALUE) 
                 {
                     cout << "\n" << "Polaczono z kontrolerem";
+                         BYTE buffer[64]; // Załóżmy, że odczytujemy dane o rozmiarze 64 bajtów
+                        DWORD bytesRead;
+                        while(true)
+                        {
+                            if (ReadFile(hHIDDevice, buffer, sizeof(buffer), &bytesRead, NULL))
+                            {
+                                if(buffer[11] == 1)
+                                {
+                                    break;
+                                }
+                            }
+                        {
+                      
+                        }
+                        }
+                        if (ReadFile(hHIDDevice, buffer, sizeof(buffer), &bytesRead, NULL))
+                        {
+                      
+                        }
+                    
                     CloseHandle(hHIDDevice);
                 }
             }
