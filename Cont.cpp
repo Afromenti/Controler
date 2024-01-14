@@ -9,14 +9,9 @@ using namespace std;
 
 GUID classGuid;
 HMODULE hHidLib;
-
-HDEVINFO deviceInfoSet;
-SP_DEVICE_INTERFACE_DATA deviceInterfaceData;
-PSP_DEVICE_INTERFACE_DETAIL_DATA deviceInterfaceDetailData = NULL;
-SP_DEVINFO_DATA deviceInfoData;
 DWORD deviceInterfaceDetailDataSize;
-
-HANDLE hidDeviceObject = INVALID_HANDLE_VALUE;
+SP_DEVINFO_DATA deviceInfoData;
+PSP_DEVICE_INTERFACE_DETAIL_DATA deviceInterfaceDetailData = NULL;
 
 string getRegistryPropertyString(HDEVINFO deviceInfoSet,PSP_DEVINFO_DATA deviceInfoData, DWORD property)
 {
@@ -27,9 +22,10 @@ string getRegistryPropertyString(HDEVINFO deviceInfoSet,PSP_DEVINFO_DATA deviceI
     propertyBuffer = new char[(propertyBufferSize * sizeof(TCHAR))];
     bool result=SetupDiGetDeviceRegistryProperty(deviceInfoSet, deviceInfoData, property, NULL, PBYTE(propertyBuffer), propertyBufferSize, NULL);
 
+
+     
     return propertyBuffer;
 }
-
 // Funkcja do iteracji przez listę HID urządzeń
 void EnumerateHIDDevices() {
     hHidLib = LoadLibrary("C:\\Windows\\System32\\hid.dll");
@@ -40,13 +36,13 @@ void EnumerateHIDDevices() {
     if (!HidD_GetHidGuid)
     {
         FreeLibrary(hHidLib);
+   
     }
 
     HidD_GetHidGuid(&classGuid);
 
     HDEVINFO hDevInfo = SetupDiGetClassDevs(&classGuid, NULL, NULL, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
-    if (hDevInfo == INVALID_HANDLE_VALUE) 
-    {
+    if (hDevInfo == INVALID_HANDLE_VALUE) {
         std::cerr << "SetupDiGetClassDevs failed" << std::endl;
         return;
     }
@@ -59,24 +55,22 @@ void EnumerateHIDDevices() {
         // Pobierz interfejs urządzenia
         SP_DEVICE_INTERFACE_DATA devInterfaceData;
         devInterfaceData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
+        deviceInterfaceDetailData = (PSP_DEVICE_INTERFACE_DETAIL_DATA) new DWORD[deviceInterfaceDetailDataSize];
+        deviceInterfaceDetailData->cbSize=sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
 
         if (SetupDiEnumDeviceInterfaces(hDevInfo, &devInfoData, &classGuid, 0, &devInterfaceData)) {
             // Pobierz wymagany rozmiar bufora
             DWORD requiredSize;
-            SetupDiGetDeviceInterfaceDetail(hDevInfo, &devInterfaceData, NULL, 0, &requiredSize, NULL);
-             deviceInterfaceDetailData = (PSP_DEVICE_INTERFACE_DETAIL_DATA) new DWORD[deviceInterfaceDetailDataSize];
-            deviceInterfaceDetailData->cbSize=sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
-             deviceInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
+            SetupDiGetDeviceInterfaceDetail(hDevInfo, &devInterfaceData, NULL, 0, &deviceInterfaceDetailDataSize, NULL);
+
             SP_DEVICE_INTERFACE_DETAIL_DATA* devInterfaceDetailData = (SP_DEVICE_INTERFACE_DETAIL_DATA*)malloc(requiredSize);
             devInterfaceDetailData->cbSize = sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
             deviceInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
 
-            if (SetupDiGetDeviceInterfaceDetail(hDevInfo, &devInterfaceData, devInterfaceDetailData,
-                                                requiredSize, NULL, &deviceInfoData)) 
-                                                
-            {
-                cout << devInterfaceDetailData->DevicePath;
 
+            if (SetupDiGetDeviceInterfaceDetail(hDevInfo, &devInterfaceData, devInterfaceDetailData, deviceInterfaceDetailDataSize, &requiredSize, &deviceInfoData)) 
+            {
+                cout << "\nClassDescr: "<<getRegistryPropertyString(hDevInfo,&deviceInfoData, SPDRP_CLASS);
                 HANDLE hHIDDevice = CreateFile(devInterfaceDetailData->DevicePath, GENERIC_READ | GENERIC_WRITE,
                                                FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, 0, NULL);
 
