@@ -10,14 +10,18 @@ using namespace std;
 #pragma comment(lib, "hid.lib")
 
 
-//buffer[11] == A_BUTTON
+//buffer[11] == A_BUTTON {1}
+//buffer[12] == BOTTTOM_ARROW {20} // RIGHT_ARROW {12} // TOP_ARROW {4} // LEFT_ARROW {28}
+//buffer[4] == left_joystick // TOP {0} // BOT {255}
+
 class Game
 {
     public:
         bool gameover;
         int score;
         int dinoX, dinoY;
-        int obstacleX, obstacleY;
+        int obstacleX, obstacleY;\
+        int lifes = 3;
 
     void setup() 
     {
@@ -33,7 +37,7 @@ class Game
     void draw() 
     {
         system("cls");
-        for (int i = 0; i < 20; i++) 
+        for (int i = 0; i < 50; i++) 
         {
             for (int j = 0; j < 50; j++) 
             {
@@ -44,12 +48,12 @@ class Game
                 else
                     cout << " ";
             }
-            cout << endl;
+            cout << "\n";
         }
-        cout << "Score: " << score << endl;
+        cout << "Score: " << score << " Lives: " << lifes << "\n";
     }
     
-    void input(HANDLE &controller) 
+    bool input(HANDLE &controller) 
     {
         BYTE buffer[64]; 
         DWORD bytesRead;
@@ -57,11 +61,49 @@ class Game
        
         if (ReadFile(controller, buffer, sizeof(buffer), &bytesRead, NULL))
         {
-            if (buffer[11] == 1)
+            if (buffer[12] == 4)
             {
-                    score += 100;
+                dinoY--;
+                return true;
+            }
+
+            if (buffer[12] == 12)
+            {
+                dinoX++;
+                return true;
+            }
+
+            if (buffer[12] == 20)
+            {
+                dinoY++;
+                return true;
+            }
+
+            if (buffer[12] == 28)
+            {
+                dinoX--;
+                return true;
+            }
+
+            if (buffer[4] == 0)
+            {
+                dinoY--;
+                return true;
+            }
+
+            if (buffer[4] == 255)
+            {
+                dinoY++;
+                return true;
+            }
+
+            if (buffer[2] == 0)
+            {
+                dinoX--;
+                return true;
             }
         }
+    return false;
      } 
 
 
@@ -69,7 +111,7 @@ class Game
     void logic() 
     {
         if (obstacleX == dinoX && obstacleY == dinoY)
-            gameover = true;
+            lifes--;
         obstacleX--;
 
         if (obstacleX < 0) 
@@ -77,6 +119,11 @@ class Game
             obstacleX = 49;
             obstacleY = rand() % 19;
             score++;
+        }
+
+        if(!lifes)
+        {
+            gameover = true;
         }
     }
     
