@@ -20,7 +20,7 @@ class Game
         bool gameover;
         int score;
         int dinoX, dinoY;
-        int obstacleX, obstacleY;\
+        int obstacleX, obstacleY;
         int lifes = 3;
 
     void setup() 
@@ -37,9 +37,12 @@ class Game
     void draw() 
     {
         system("cls");
-        for (int i = 0; i < 50; i++) 
+        for(unsigned int i = 0; i < 31; i++)
+            cout << "*";
+        for (int i = 0; i < 20; i++) 
         {
-            for (int j = 0; j < 50; j++) 
+            cout << "*";
+            for (int j = 0; j < 30; j++) 
             {
                 if (i == dinoY && j == dinoX)
                     cout << "D";
@@ -48,9 +51,12 @@ class Game
                 else
                     cout << " ";
             }
-            cout << "\n";
+            cout << "*\n";
+
         }
-        cout << "Score: " << score << " Lives: " << lifes << "\n";
+        for(unsigned int i = 0; i < 32; i++)
+            cout << "*";
+        cout << "\nScore: " << score << " Lives: " << lifes << "\n";
     }
     
     bool input(HANDLE &controller) 
@@ -150,7 +156,7 @@ class Game
 
         if (obstacleX < 0) 
         {
-            obstacleX = 49;
+            obstacleX = 29;
             obstacleY = rand() % 19;
             score++;
         }
@@ -159,6 +165,8 @@ class Game
         {
             gameover = true;
         }
+        if(dinoX > 29 || dinoY > 18 || dinoX < 0 || dinoY < 0)
+            lifes = 0;
     }
     
 
