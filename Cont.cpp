@@ -58,9 +58,37 @@ class Game
         BYTE buffer[64]; 
         DWORD bytesRead;
         
-       
         if (ReadFile(controller, buffer, sizeof(buffer), &bytesRead, NULL))
         {
+
+            if (buffer[2] == 255 && buffer[4] == 0)
+            {
+                dinoX++;
+                dinoY -= 2;                                                                                     
+                return true;
+            }
+
+            if (buffer[2] == 0 && buffer[4] == 0)
+            {
+                dinoX--;
+                dinoY -= 2;                                                                                     
+                return true;
+            }
+
+            if (buffer[2] == 0 && buffer[4] == 255)
+            {
+                dinoX--;
+                dinoY += 2;                                                                                     
+                return true;
+            }
+
+            if (buffer[2] == 255 && buffer[4] == 255)
+            {
+                dinoX++;
+                dinoY += 2;                                                                                     
+                return true;
+            }
+
             if (buffer[12] == 4)
             {
                 dinoY--;
@@ -102,6 +130,12 @@ class Game
                 dinoX--;
                 return true;
             }
+            if (buffer[2] == 255)
+            {
+                dinoX++;
+                return true;
+            }
+
         }
     return false;
      } 
