@@ -3,10 +3,86 @@
 #include <hidsdi.h>
 #include <iostream>
 #include <regex>
+#include <conio.h>
 using namespace std;
 
 #pragma comment(lib, "setupapi.lib")
 #pragma comment(lib, "hid.lib")
+
+
+//buffer[11] == A_BUTTON
+class Game
+{
+    public:
+        bool gameover;
+        int score;
+        int dinoX, dinoY;
+        int obstacleX, obstacleY;
+
+    void setup() 
+    {
+        gameover = false;
+        score = 0;
+        dinoX = 10;
+        dinoY = 10;
+        obstacleX = 30;
+        obstacleY = 10;
+    }
+
+    
+    void draw() 
+    {
+        system("cls");
+        for (int i = 0; i < 20; i++) 
+        {
+            for (int j = 0; j < 50; j++) 
+            {
+                if (i == dinoY && j == dinoX)
+                    cout << "D";
+                else if (i == obstacleY && j == obstacleX)
+                    cout << "O";
+                else
+                    cout << " ";
+            }
+            cout << endl;
+        }
+        cout << "Score: " << score << endl;
+    }
+    
+    void input(HANDLE &controller) 
+    {
+        BYTE buffer[64]; 
+        DWORD bytesRead;
+        
+       
+        if (ReadFile(controller, buffer, sizeof(buffer), &bytesRead, NULL))
+        {
+            if (buffer[11] == 1)
+            {
+                    score += 100;
+            }
+        }
+     } 
+
+
+    
+    void logic() 
+    {
+        if (obstacleX == dinoX && obstacleY == dinoY)
+            gameover = true;
+        obstacleX--;
+
+        if (obstacleX < 0) 
+        {
+            obstacleX = 49;
+            obstacleY = rand() % 19;
+            score++;
+        }
+    }
+    
+
+};
+
 
 GUID classGuid;
 HMODULE hHidLib;
@@ -27,8 +103,7 @@ string getRegistryPropertyString(HDEVINFO deviceInfoSet,PSP_DEVINFO_DATA deviceI
      
     return propertyBuffer;
 }
-// Funkcja do iteracji przez listę HID urządzeń
-void EnumerateHIDDevices() {
+HANDLE findController() {
     hHidLib = LoadLibrary("C:\\Windows\\System32\\hid.dll");
 
     void (__stdcall *HidD_GetHidGuid)(OUT LPGUID HidGuid);
@@ -43,24 +118,25 @@ void EnumerateHIDDevices() {
     HidD_GetHidGuid(&classGuid);
 
     HDEVINFO hDevInfo = SetupDiGetClassDevs(&classGuid, NULL, NULL, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
-    if (hDevInfo == INVALID_HANDLE_VALUE) {
-        std::cerr << "SetupDiGetClassDevs failed" << std::endl;
-        return;
+    if (hDevInfo == INVALID_HANDLE_VALUE) 
+    {
+        cerr << "SetupDiGetClassDevs failed" << std::endl;
+        return INVALID_HANDLE_VALUE;
+
     }
 
     SP_DEVINFO_DATA devInfoData;
     devInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
 
-    // Iteruj przez urządzenia
-    for (DWORD i = 0; SetupDiEnumDeviceInfo(hDevInfo, i, &devInfoData); ++i) {
-        // Pobierz interfejs urządzenia
+    for (DWORD i = 0; SetupDiEnumDeviceInfo(hDevInfo, i, &devInfoData); ++i) 
+    {
         SP_DEVICE_INTERFACE_DATA devInterfaceData;
         devInterfaceData.cbSize = sizeof(SP_DEVICE_INTERFACE_DATA);
         deviceInterfaceDetailData = (PSP_DEVICE_INTERFACE_DETAIL_DATA) new DWORD[deviceInterfaceDetailDataSize];
         deviceInterfaceDetailData->cbSize=sizeof(SP_DEVICE_INTERFACE_DETAIL_DATA);
 
-        if (SetupDiEnumDeviceInterfaces(hDevInfo, &devInfoData, &classGuid, 0, &devInterfaceData)) {
-            // Pobierz wymagany rozmiar bufora
+        if (SetupDiEnumDeviceInterfaces(hDevInfo, &devInfoData, &classGuid, 0, &devInterfaceData)) 
+        {
             DWORD requiredSize;
             SetupDiGetDeviceInterfaceDetail(hDevInfo, &devInterfaceData, NULL, 0, &deviceInterfaceDetailDataSize, NULL);
 
@@ -81,43 +157,57 @@ void EnumerateHIDDevices() {
 
                 if (hHIDDevice != INVALID_HANDLE_VALUE) 
                 {
-                    cout << "\n" << "Polaczono z kontrolerem";
-                         BYTE buffer[64]; // Załóżmy, że odczytujemy dane o rozmiarze 64 bajtów
-                        DWORD bytesRead;
-                        while(true)
-                        {
-                            if (ReadFile(hHIDDevice, buffer, sizeof(buffer), &bytesRead, NULL))
-                            {
-                                if(buffer[11] == 1)
-                                {
-                                    break;
-                                }
-                            }
-                        {
-                      
-                        }
-                        }
-                        if (ReadFile(hHIDDevice, buffer, sizeof(buffer), &bytesRead, NULL))
-                        {
-                      
-                        }
-                    
-                    CloseHandle(hHIDDevice);
+                    return hHIDDevice;
                 }
+    
             }
 
-            }
-
+        }
             free(devInterfaceDetailData);
         }
     }
-
-    // Zwolnij uchwyt do interfejsu setupapi
     SetupDiDestroyDeviceInfoList(hDevInfo);
+    return INVALID_HANDLE_VALUE;
 }
 
-int main() {
-    EnumerateHIDDevices();
+void checkInput(HANDLE &controller)
+{
+    BYTE buffer[64];
+    DWORD bytesRead;
+
+    while (true)
+    {
+        if (ReadFile(controller, buffer, sizeof(buffer), &bytesRead, NULL) && bytesRead > 0)
+        {
+            cout << "Odczytano dane od kontrolera:" << endl;
+            for (DWORD i = 0; i < bytesRead; ++i)
+            {
+                cout << "Byte " << i << ": " << (int)buffer[i] << endl;
+            }
+        }
+        Sleep(10);
+    }
+}
+
+int main() 
+{
+    HANDLE controller = findController();
+    if (controller != INVALID_HANDLE_VALUE)
+    {
+        cout << "Polaczono z padem \n";
+        Game game = Game();
+        game.setup();
+        while (!game.gameover)
+        {
+            game.draw();
+            game.input(controller);
+            game.logic();
+        }
+    }
+    else
+    {
+        cout << "Nie znaleziono pada \n";
+    }
 
     return 0;
 }
