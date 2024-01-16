@@ -340,13 +340,15 @@ int main()
             Sleep(50);
             system("cls");
             cout << "Twoj ostatni wynik to: " << game.score << "\n";
-            cout << "Nacisnij [START], zeby wznowic gre";
+            cout << "Nacisnij [START], zeby wznowic gre" << "\n";
+            cout << "Nacisnij [X], zeby zakonczyc program";
             game.input(controller);
         }
     }
     else
     {
         cout << "Nie znaleziono pada \n";
+        Sleep(1000);
     }
 
     return 0;
