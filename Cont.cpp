@@ -21,7 +21,7 @@ class Game
         int score;
         int dinoX, dinoY;
         int obstacleX, obstacleY;
-        int lifes = 3;
+        int lifes;
 
     void setup() 
     {
@@ -31,14 +31,17 @@ class Game
         dinoY = 10;
         obstacleX = 30;
         obstacleY = 10;
+        lifes = 3;
     }
+
 
     
     void draw() 
     {
         system("cls");
-        for(unsigned int i = 0; i < 31; i++)
+        for(unsigned int i = 0; i < 32; i++)
             cout << "*";
+        cout << "\n";
         for (int i = 0; i < 20; i++) 
         {
             cout << "*";
@@ -57,6 +60,7 @@ class Game
         for(unsigned int i = 0; i < 32; i++)
             cout << "*";
         cout << "\nScore: " << score << " Lives: " << lifes << "\n";
+        cout << "Nacisnij [B] zeby wyjsc z gry." << "\n";
     }
     
     bool input(HANDLE &controller) 
@@ -139,6 +143,23 @@ class Game
             if (buffer[2] == 255)
             {
                 dinoX++;
+                return true;
+            }
+            if (buffer[26] == 2)
+            {
+                gameover = true;
+                Sleep(500);
+                return true;
+            }
+
+            if (buffer[26] == 128)
+            {
+                if(gameover == true)
+                {
+                    gameover = false;
+                    setup();
+                    Sleep(500);
+                }
                 return true;
             }
 
@@ -283,14 +304,19 @@ int main()
     HANDLE controller = findController();
     if (controller != INVALID_HANDLE_VALUE)
     {
-        cout << "Polaczono z padem \n";
         Game game = Game();
         game.setup();
-        while (!game.gameover)
+        while (true)
         {
-            game.draw();
+            while (!game.gameover)
+            {
+                game.draw();
+                game.input(controller);
+                game.logic();
+            }
+            system("cls");
+            cout << "Nacisnij [START], zeby wznowic gre";
             game.input(controller);
-            game.logic();
         }
     }
     else
