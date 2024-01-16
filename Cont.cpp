@@ -337,7 +337,9 @@ int main()
                 game.input(controller);
                 game.logic();
             }
+            Sleep(50);
             system("cls");
+            cout << "Twoj ostatni wynik to: " << game.score << "\n";
             cout << "Nacisnij [START], zeby wznowic gre";
             game.input(controller);
         }
