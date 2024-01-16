@@ -21,6 +21,7 @@ class Game
         int score;
         int dinoX, dinoY;
         int obstacleX, obstacleY;
+        int obstacleX2, obstacleY2;
         int lifes;
 
     void setup() 
@@ -31,6 +32,8 @@ class Game
         dinoY = 10;
         obstacleX = 30;
         obstacleY = 10;
+        obstacleX2 = 30;
+        obstacleY2 = 1;
         lifes = 3;
     }
 
@@ -48,10 +51,20 @@ class Game
             for (int j = 0; j < 30; j++) 
             {
                 if (i == dinoY && j == dinoX)
+                {
                     cout << "D";
-                else if (i == obstacleY && j == obstacleX)
+                    continue;
+                }
+                if (i == obstacleY && j == obstacleX)
+                {
                     cout << "O";
-                else
+                    continue;
+                }
+                if (i == obstacleY2 && j == obstacleX2)
+                {
+                    cout << "O";
+                    continue;
+                }
                     cout << " ";
             }
             cout << "*\n";
@@ -182,6 +195,16 @@ class Game
             score++;
         }
 
+        if (obstacleX2 == dinoX && obstacleY2 == dinoY)
+            lifes--;
+        obstacleX2--;
+
+        if (obstacleX2 < 0) 
+        {
+            obstacleX2 = 29;
+            obstacleY2 = rand() % 19;
+            score++;
+        }
         if(!lifes)
         {
             gameover = true;
